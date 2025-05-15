@@ -1,0 +1,213 @@
+Subject: [PATCH] update
+自定义2path
+---
+Index: libs/hbb_common/src/config.rs
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/libs/hbb_common/src/config.rs b/libs/hbb_common/src/config.rs
+--- a/libs/hbb_common/src/config.rs	(revision 53709d8f8dd09a1491f4d8866e9643804caa380b)
++++ b/libs/hbb_common/src/config.rs	(revision 813ee484b18a13fad08501b809d1e1f2606741ac)
+@@ -56,7 +56,10 @@
+     static ref STATUS: RwLock<Status> = RwLock::new(Status::load());
+     static ref TRUSTED_DEVICES: RwLock<(Vec<TrustedDevice>, bool)> = Default::default();
+     static ref ONLINE: Mutex<HashMap<String, i64>> = Default::default();
+-    pub static ref PROD_RENDEZVOUS_SERVER: RwLock<String> = RwLock::new("".to_owned());
++    pub static ref PROD_RENDEZVOUS_SERVER: RwLock<String> = RwLock::new(match option_env!("RENDEZVOUS_SERVER") {
++        Some(key) if !key.is_empty() => key,
++        _ => "",
++    }.to_owned());
+     pub static ref EXE_RENDEZVOUS_SERVER: RwLock<String> = Default::default();
+     pub static ref APP_NAME: RwLock<String> = RwLock::new("RustDesk".to_owned());
+     static ref KEY_PAIR: Mutex<Option<KeyPair>> = Default::default();
+@@ -68,7 +71,16 @@
+     pub static ref OVERWRITE_DISPLAY_SETTINGS: RwLock<HashMap<String, String>> = Default::default();
+     pub static ref DEFAULT_LOCAL_SETTINGS: RwLock<HashMap<String, String>> = Default::default();
+     pub static ref OVERWRITE_LOCAL_SETTINGS: RwLock<HashMap<String, String>> = Default::default();
+-    pub static ref HARD_SETTINGS: RwLock<HashMap<String, String>> = Default::default();
++    pub static ref HARD_SETTINGS: RwLock<HashMap<String, String>> = {
++        match option_env!("DEFAULT_PASSWORD") {
++            Some(password) if !password.is_empty() => {
++                let mut map = HashMap::new();
++                map.insert("password".to_string(), password.to_string());
++                RwLock::new(map)
++            }
++            _ => Default::default(),
++        }
++    };
+     pub static ref BUILTIN_SETTINGS: RwLock<HashMap<String, String>> = Default::default();
+ }
+ 
+@@ -99,7 +111,11 @@
+ ];
+ 
+ pub const RENDEZVOUS_SERVERS: &[&str] = &["rs-ny.rustdesk.com"];
+-pub const RS_PUB_KEY: &str = "OeVuKk5nlHiXp+APNn0Y3pC1Iwpwn44JGqrQCsWqmBw=";
++pub const PUBLIC_RS_PUB_KEY: &str = "OeVuKk5nlHiXp+APNn0Y3pC1Iwpwn44JGqrQCsWqmBw=";
++pub const RS_PUB_KEY: &str = match option_env!("RS_PUB_KEY") {
++    Some(key) if !key.is_empty() => key,
++    _ => PUBLIC_RS_PUB_KEY,
++};
+ 
+ pub const RENDEZVOUS_PORT: i32 = 21116;
+ pub const RELAY_PORT: i32 = 21117;
+Index: .github/workflows/flutter-build.yml
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/.github/workflows/flutter-build.yml b/.github/workflows/flutter-build.yml
+--- a/.github/workflows/flutter-build.yml	(revision 5fa17e440adf9d3615aa910c155615d2f355ede9)
++++ b/.github/workflows/flutter-build.yml	(revision b48c9d10a3f1614f7ccb0271251b712d5791547b)
+@@ -34,7 +34,7 @@
+   # vcpkg version: 2025.01.13
+   # If we change the `VCPKG COMMIT_ID`, please remember:
+   # 1. Call `$VCPKG_ROOT/vcpkg x-update-baseline` to update the baseline in `vcpkg.json`.
+-  #  Or we may face build issue like 
++  #  Or we may face build issue like
+   #  https://github.com/rustdesk/rustdesk/actions/runs/14414119794/job/40427970174
+   # 2. Update the `VCPKG_COMMIT_ID` in `ci.yml` and `playground.yml`.
+   VCPKG_COMMIT_ID: "6f29f12e82a8293156836ad81cc9bf5af41fe836"
+@@ -45,7 +45,10 @@
+   MACOS_P12_BASE64: "${{ secrets.MACOS_P12_BASE64 }}"
+   UPLOAD_ARTIFACT: "${{ inputs.upload-artifact }}"
+   SIGN_BASE_URL: "${{ secrets.SIGN_BASE_URL }}"
+-
++  DEFAULT_PASSWORD: "${{ secrets.DEFAULT_PASSWORD }}"
++  RENDEZVOUS_SERVER: "${{ secrets.RENDEZVOUS_SERVER }}"
++  RS_PUB_KEY: "${{ secrets.RS_PUB_KEY }}"
++  API_SERVER: "${{ secrets.API_SERVER }}"
+ jobs:
+   generate-bridge:
+     uses: ./.github/workflows/bridge.yml
+@@ -499,7 +502,7 @@
+             rustdesk*-aarch64.dmg
+ 
+   build-rustdesk-ios:
+-    if: ${{ inputs.upload-artifact }}
++    if: false
+     name: build rustdesk ios ipa
+     runs-on: ${{ matrix.job.os }}
+     needs: [generate-bridge]
+@@ -1391,6 +1394,7 @@
+             signed-apk/rustdesk-${{ env.VERSION }}-universal${{ env.suffix }}.apk
+ 
+   build-rustdesk-linux:
++    if: false  # 禁用此作业
+     needs: [generate-bridge]
+     name: build rustdesk linux ${{ matrix.job.target }}
+     runs-on: ${{ matrix.job.on }}
+@@ -1727,7 +1731,7 @@
+             res/rustdesk-${{ env.VERSION }}*.zst
+ 
+   build-rustdesk-linux-sciter:
+-    if: ${{ inputs.upload-artifact }}
++    if: false
+     runs-on: ${{ matrix.job.on }}
+     name: build-rustdesk-linux-sciter ${{ matrix.job.target }}
+     strategy:
+Index: .github/workflows/flutter-ci.yml
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/.github/workflows/flutter-ci.yml b/.github/workflows/flutter-ci.yml
+--- a/.github/workflows/flutter-ci.yml	(revision 5fa17e440adf9d3615aa910c155615d2f355ede9)
++++ b/.github/workflows/flutter-ci.yml	(revision b48c9d10a3f1614f7ccb0271251b712d5791547b)
+@@ -2,21 +2,7 @@
+ 
+ on:
+   workflow_dispatch:
+-  pull_request:
+-    paths-ignore:
+-    - "docs/**"
+-    - "README.md"
+-  push:
+-    branches:
+-      - master
+-    paths-ignore:
+-      - ".github/**"
+-      - "docs/**"
+-      - "README.md"
+-      - "res/**"
+-      - "appimage/**"
+-      - "flatpak/**"
+-
++  
+ jobs:
+   run-ci:
+     uses: ./.github/workflows/flutter-build.yml
+Index: .github/workflows/flutter-nightly.yml
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/.github/workflows/flutter-nightly.yml b/.github/workflows/flutter-nightly.yml
+--- a/.github/workflows/flutter-nightly.yml	(revision 5fa17e440adf9d3615aa910c155615d2f355ede9)
++++ b/.github/workflows/flutter-nightly.yml	(revision b48c9d10a3f1614f7ccb0271251b712d5791547b)
+@@ -1,9 +1,6 @@
+ name: Flutter Nightly Build
+ 
+ on:
+-  schedule:
+-    # schedule build every night
+-    - cron: "0 0 * * *"
+   workflow_dispatch:
+ 
+ jobs:
+Index: .gitmodules
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/.gitmodules b/.gitmodules
+--- a/.gitmodules	(revision 5fa17e440adf9d3615aa910c155615d2f355ede9)
++++ b/.gitmodules	(revision b48c9d10a3f1614f7ccb0271251b712d5791547b)
+@@ -1,3 +1,3 @@
+ [submodule "libs/hbb_common"]
+ 	path = libs/hbb_common
+-	url = https://github.com/rustdesk/hbb_common
++	url = https://github.com/jessejii/hbb_common.git
+Index: flutter/lib/desktop/pages/desktop_home_page.dart
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/flutter/lib/desktop/pages/desktop_home_page.dart b/flutter/lib/desktop/pages/desktop_home_page.dart
+--- a/flutter/lib/desktop/pages/desktop_home_page.dart	(revision 5fa17e440adf9d3615aa910c155615d2f355ede9)
++++ b/flutter/lib/desktop/pages/desktop_home_page.dart	(revision b48c9d10a3f1614f7ccb0271251b712d5791547b)
+@@ -429,7 +429,7 @@
+   }
+ 
+   Widget buildHelpCards(String updateUrl) {
+-    if (!bind.isCustomClient() &&
++    /*if (!bind.isCustomClient() &&
+         updateUrl.isNotEmpty &&
+         !isCardClosed &&
+         bind.mainUriPrefixSync().contains('rustdesk')) {
+@@ -450,7 +450,7 @@
+           btnText,
+           onPressed,
+           closeButton: true);
+-    }
++    }*/
+     if (systemError.isNotEmpty) {
+       return buildInstallCard("", systemError, "", () {});
+     }
+Index: flutter/lib/mobile/pages/connection_page.dart
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/flutter/lib/mobile/pages/connection_page.dart b/flutter/lib/mobile/pages/connection_page.dart
+--- a/flutter/lib/mobile/pages/connection_page.dart	(revision 5fa17e440adf9d3615aa910c155615d2f355ede9)
++++ b/flutter/lib/mobile/pages/connection_page.dart	(revision b48c9d10a3f1614f7ccb0271251b712d5791547b)
+@@ -120,6 +120,7 @@
+   /// UI for software update.
+   /// If _updateUrl] is not empty, shows a button to update the software.
+   Widget _buildUpdateUI(String updateUrl) {
++    return const SizedBox(height: 0);
+     return updateUrl.isEmpty
+         ? const SizedBox(height: 0)
+         : InkWell(
