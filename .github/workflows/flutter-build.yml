@@ -1456,6 +1456,11 @@ jobs:
           run: |
             # disable git safe.directory
             git config --global --add safe.directory "*"
+            # pass build-time server config into cargo in container
+            export RENDEZVOUS_SERVER="${{ env.RENDEZVOUS_SERVER }}"
+            export RS_PUB_KEY="${{ env.RS_PUB_KEY }}"
+            export API_SERVER="${{ env.API_SERVER }}"
+            export DEFAULT_PASSWORD="${{ env.DEFAULT_PASSWORD }}"
             # rust
             pushd /opt
             # do not use rustup, because memory overflow in qemu
@@ -1777,6 +1782,11 @@ jobs:
           run: |
             # disable git safe.directory
             git config --global --add safe.directory "*"
+            # pass build-time server config into cargo in container
+            export RENDEZVOUS_SERVER="${{ env.RENDEZVOUS_SERVER }}"
+            export RS_PUB_KEY="${{ env.RS_PUB_KEY }}"
+            export API_SERVER="${{ env.API_SERVER }}"
+            export DEFAULT_PASSWORD="${{ env.DEFAULT_PASSWORD }}"
             # set python3.7 as default python3
             update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.7 1
             # add built CMake to PATH and set VCPKG_FORCE_SYSTEM_BINARIES Afor arm-linux
